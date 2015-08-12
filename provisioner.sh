@@ -52,6 +52,11 @@ sudo echo "</Directory>" >> /etc/apache2/mods-available/vhost_alias.conf
 # enable Apache mod_rewrite
 sudo a2enmod vhost_alias
 
+# enable Apache SSL mod
+sudo a2enmod ssl
+
+# set default ssl vhost
+sudo a2ensite default-ssl
 
 # Install phpmyadmin silently
 #echo "phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2" | debconf-set-selections
