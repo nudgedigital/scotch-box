@@ -1,29 +1,42 @@
 #! /bin/bash
 
-if [ -d /var/www/aliases ];
-then
-  find /var/www/aliases -maxdepth 1 -type l -exec rm -f {} \;
-  rmdir /var/www/aliases
+
+# Remove any existing aliases
+if [ -d /var/www/aliases ]; then
+  echo "Removing any existing aliases"
+  sudo find /var/www/aliases -maxdepth 1 -type l -exec rm -f {} \;  
+else
+  echo "Creating new alias folder"
+  sudo mkdir /var/www/aliases
 fi
 
-mkdir /var/www/aliases
+cd /var/www/
 
 for d in /var/www/* ; do
   BASE=$(basename $d);
-  if [ $BASE == 'aliases' ]
-  then
+  if [ $BASE == 'aliases' ]; then  
     continue;
   fi
   DIR=$(dirname $d);
   ALIAS='';
-  if [ -f $d/.scotchroot ]
-  then
+
+  if [ -f $d/.scotchroot ]; then
     sudo sed 's/^M$//' $d/.scotchroot >$d/.scotchroot.tmp && mv $d/.scotchroot.tmp $d/.scotchroot
     sudo tr -d '\r' < $d/.scotchroot > $d/.scotchroot.tmp && mv $d/.scotchroot.tmp $d/.scotchroot
     ALIAS=$(<$d/.scotchroot);
   fi
-  ln -s $d/$ALIAS $DIR/aliases/$BASE.local
-  ln -s $d/$ALIAS $DIR/aliases/www.$BASE.local
+
+  if [ ! -e $DIR/aliases/$BASE.local ]; then
+    echo "Creating new alias for $d/$ALIAS aliases/$BASE.local"
+    sudo ln -s $d/$ALIAS aliases/$BASE.local
+    #sudo ln -s $d/$ALIAS $DIR/aliases/$BASE.local
+  fi
+
+  if [ ! -e $DIR/aliases/www.$BASE.local ]; then 
+    echo "Creating new alias for  $d/$ALIAS  aliases/www.$BASE.local"
+    sudo ln -s $d/$ALIAS  aliases/www.$BASE.local
+    #sudo ln -s $d/$ALIAS  $DIR/aliases/www.$BASE.local
+  fi
 done
 
 # create and enable rewrite loader
@@ -40,9 +53,9 @@ sudo echo "LoadModule vhost_alias_module /usr/lib/apache2/modules/mod_vhost_alia
 # create our vhost_alias.conf file
 echo "Creating Apache vhost_alias.conf"
 sudo echo "UseCanonicalName Off" > /etc/apache2/mods-available/vhost_alias.conf
-sudo echo "VirtualDocumentRoot /var/www/aliases/%0" >> /etc/apache2/mods-available/vhost_alias.conf
+sudo echo "VirtualDocumentRoot /var/www/%0" >> /etc/apache2/mods-available/vhost_alias.conf
 
-sudo echo "<Directory '/var/www/aliases'>" >> /etc/apache2/mods-available/vhost_alias.conf
+sudo echo "<Directory '/var/www'>" >> /etc/apache2/mods-available/vhost_alias.conf
 sudo echo "Options Indexes FollowSymLinks MultiViews" >> /etc/apache2/mods-available/vhost_alias.conf
 sudo echo "AllowOverride all" >> /etc/apache2/mods-available/vhost_alias.conf
 sudo echo "Order allow,deny" >> /etc/apache2/mods-available/vhost_alias.conf
