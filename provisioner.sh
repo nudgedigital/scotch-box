@@ -18,14 +18,9 @@ for d in /var/www/* ; do
     continue;
   fi
   DIR=$(dirname $d);
+  
   # @TODO find a nicer way to link to ruby from here
   ALIAS=$(/home/vagrant/.rbenv/shims/ruby /vagrant/config.rb $BASE.local);
-
-  # if [ -f $d/.scotchroot ]; then
-  #   sudo sed 's/^M$//' $d/.scotchroot >$d/.scotchroot.tmp && mv $d/.scotchroot.tmp $d/.scotchroot
-  #   sudo tr -d '\r' < $d/.scotchroot > $d/.scotchroot.tmp && mv $d/.scotchroot.tmp $d/.scotchroot
-  #   ALIAS=$(<$d/.scotchroot);
-  # fi
 
   if [ ! -e $DIR/aliases/$BASE.local ]; then
     echo "Creating new alias for $d/$ALIAS aliases/$BASE.local"
