@@ -18,13 +18,14 @@ for d in /var/www/* ; do
     continue;
   fi
   DIR=$(dirname $d);
-  ALIAS='';
+  # @TODO find a nicer way to link to ruby from here
+  ALIAS=$(/home/vagrant/.rbenv/shims/ruby /vagrant/config.rb $BASE.local);
 
-  if [ -f $d/.scotchroot ]; then
-    sudo sed 's/^M$//' $d/.scotchroot >$d/.scotchroot.tmp && mv $d/.scotchroot.tmp $d/.scotchroot
-    sudo tr -d '\r' < $d/.scotchroot > $d/.scotchroot.tmp && mv $d/.scotchroot.tmp $d/.scotchroot
-    ALIAS=$(<$d/.scotchroot);
-  fi
+  # if [ -f $d/.scotchroot ]; then
+  #   sudo sed 's/^M$//' $d/.scotchroot >$d/.scotchroot.tmp && mv $d/.scotchroot.tmp $d/.scotchroot
+  #   sudo tr -d '\r' < $d/.scotchroot > $d/.scotchroot.tmp && mv $d/.scotchroot.tmp $d/.scotchroot
+  #   ALIAS=$(<$d/.scotchroot);
+  # fi
 
   if [ ! -e $DIR/aliases/$BASE.local ]; then
     echo "Creating new alias for $d/$ALIAS aliases/$BASE.local"
@@ -53,9 +54,9 @@ sudo echo "LoadModule vhost_alias_module /usr/lib/apache2/modules/mod_vhost_alia
 # create our vhost_alias.conf file
 echo "Creating Apache vhost_alias.conf"
 sudo echo "UseCanonicalName Off" > /etc/apache2/mods-available/vhost_alias.conf
-sudo echo "VirtualDocumentRoot /var/www/%0" >> /etc/apache2/mods-available/vhost_alias.conf
+sudo echo "VirtualDocumentRoot /var/www/aliases/%0" >> /etc/apache2/mods-available/vhost_alias.conf
 
-sudo echo "<Directory '/var/www'>" >> /etc/apache2/mods-available/vhost_alias.conf
+sudo echo "<Directory '/var/www/aliases'>" >> /etc/apache2/mods-available/vhost_alias.conf
 sudo echo "Options Indexes FollowSymLinks MultiViews" >> /etc/apache2/mods-available/vhost_alias.conf
 sudo echo "AllowOverride all" >> /etc/apache2/mods-available/vhost_alias.conf
 sudo echo "Order allow,deny" >> /etc/apache2/mods-available/vhost_alias.conf
