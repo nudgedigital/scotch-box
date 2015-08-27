@@ -4,7 +4,7 @@
 # Remove any existing aliases
 if [ -d /var/www/aliases ]; then
   echo "Removing any existing aliases"
-  sudo find /var/www/aliases -maxdepth 1 -type l -exec rm -f {} \;  
+  sudo find /var/www/aliases -maxdepth 1 -type l -exec rm -f {} \;
 else
   echo "Creating new alias folder"
   sudo mkdir /var/www/aliases
@@ -14,7 +14,7 @@ cd /var/www/
 
 for d in /var/www/* ; do
   BASE=$(basename $d);
-  if [ $BASE == 'aliases' ]; then  
+  if [ $BASE == 'aliases' ]; then
     continue;
   fi
   DIR=$(dirname $d);
@@ -32,7 +32,7 @@ for d in /var/www/* ; do
     #sudo ln -s $d/$ALIAS $DIR/aliases/$BASE.local
   fi
 
-  if [ ! -e $DIR/aliases/www.$BASE.local ]; then 
+  if [ ! -e $DIR/aliases/www.$BASE.local ]; then
     echo "Creating new alias for  $d/$ALIAS  aliases/www.$BASE.local"
     sudo ln -s $d/$ALIAS  aliases/www.$BASE.local
     #sudo ln -s $d/$ALIAS  $DIR/aliases/www.$BASE.local
@@ -91,4 +91,31 @@ do
  sed -i "s/^\($key\).*/\1 $(eval echo = \${$key})/" /etc/php5/apache2/php.ini
 done
 
-service apache2 restart
+echo "Updating repositories"
+apt-get update
+
+echo "Installing XDebug"
+apt-get install -y php5-xdebug php5-xmlrpc mc default-jre
+
+# XDEBUG
+echo "; xdebug
+xdebug.remote_connect_back = 1
+xdebug.remote_enable = 1
+xdebug.remote_handler = \"dbgp\"
+xdebug.remote_port = 9000
+xdebug.var_display_max_children = 512
+xdebug.var_display_max_data = 1024
+xdebug.var_display_max_depth = 10
+xdebug.idekey = \"PHPSTORM\"" >> /etc/php5/apache2/php.ini
+
+echo "Setting locale correctly"
+sudo locale-gen en_GB.UTF-8
+
+echo "Adding composer vendor folders to path"
+sudo echo "PATH='$PATH:~/.composer/vendor/bin'" >> /home/vagrant/.profile
+
+echo "Restarting Apache one last time..."
+sudo service apache2 restart
+
+# Uncomment for a nice solarized prompt (doesn't seem to work on windows)
+# sudo echo "export PS1='\[\033[38;5;198m\]\u\[$(tput sgr0)\]\[\033[38;5;6m\]@\[$(tput sgr0)\]\[\033[38;5;172m\]\h\[$(tput sgr0)\]\[\033[38;5;1m\]:\[$(tput sgr0)\]\[\033[38;5;6m\]\w\[$(tput sgr0)\]\[\033[38;5;15m\] \n\[$(tput sgr0)\]\[\033[38;5;172m\]\\$ \[$(tput sgr0)\]'" >> /home/vagrant/.profile
