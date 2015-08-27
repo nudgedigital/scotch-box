@@ -8,14 +8,15 @@ Vagrant.configure("2") do |config|
     config.vm.hostname = "scotchbox"
     config.vm.synced_folder "c:/dev/www", "/var/www", :mount_options => ["dmode=777", "fmode=666"]
     config.vm.provider "virtualbox" do |v|
-        v.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/v-root", "1"]        
+        v.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/v-root", "1"]
     end
+
     #config.ssh.username = 'root'
 	#config.ssh.password = 'vagrant'
 	config.ssh.insert_key = false
 
 	config.vm.provision "shell" do |script|
-    	script.path = "provisioner.sh"
-  	end
+  	script.path = "provisioner.sh"
+	end
 
 end

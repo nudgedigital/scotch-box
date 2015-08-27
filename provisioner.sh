@@ -39,6 +39,16 @@ for d in /var/www/* ; do
   fi
 done
 
+# Load in dumps
+for f in /vagrant/dumps/*.sql ; do
+  FILENAME=$(basename $f);
+  DB=$(basename $f .sql)
+  sudo echo "MYSQL: Importing $DB";
+  mysql -uroot -proot -e "DROP DATABASE IF EXISTS $DB";
+  mysql -uroot -proot -e "CREATE DATABASE $DB";
+  mysql -uroot -proot $DB < /vagrant/dumps/$FILENAME;
+done
+
 # create and enable rewrite loader
 echo "Creating Apache rewrite.load"
 sudo echo "LoadModule rewrite_module /usr/lib/apache2/modules/mod_rewrite.so" > /etc/apache2/mods-available/rewrite.load
