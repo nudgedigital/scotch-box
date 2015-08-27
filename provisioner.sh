@@ -92,10 +92,10 @@ do
 done
 
 echo "Updating repositories"
-apt-get update
+sudo apt-get update
 
 echo "Installing XDebug"
-apt-get install -y php5-xdebug php5-xmlrpc mc default-jre
+sudo apt-get install -y php5-xdebug php5-xmlrpc
 
 # XDEBUG
 echo "; xdebug
@@ -113,6 +113,9 @@ sudo locale-gen en_GB.UTF-8
 
 echo "Adding composer vendor folders to path"
 sudo echo "PATH='$PATH:~/.composer/vendor/bin'" >> /home/vagrant/.profile
+
+echo "Installing Drush"
+sudo apt-get install -y drush
 
 echo "Restarting Apache one last time..."
 sudo service apache2 restart
