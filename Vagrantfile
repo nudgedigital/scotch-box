@@ -25,5 +25,5 @@ Vagrant.configure("2") do |config|
       run "destroy.sh"
     end
   end
-  
+
 end
