@@ -1,6 +1,5 @@
 #! /bin/bash
 
-
 # Remove any existing aliases
 if [ -d /var/www/aliases ]; then
   echo "Removing any existing aliases"
@@ -18,20 +17,18 @@ for d in /var/www/* ; do
     continue;
   fi
   DIR=$(dirname $d);
-  
+
   # @TODO find a nicer way to link to ruby from here
   ALIAS=$(/home/vagrant/.rbenv/shims/ruby /vagrant/config.rb $BASE.local);
 
   if [ ! -e $DIR/aliases/$BASE.local ]; then
     echo "Creating new alias for $d/$ALIAS aliases/$BASE.local"
     sudo ln -s $d/$ALIAS aliases/$BASE.local
-    #sudo ln -s $d/$ALIAS $DIR/aliases/$BASE.local
   fi
 
   if [ ! -e $DIR/aliases/www.$BASE.local ]; then
     echo "Creating new alias for  $d/$ALIAS  aliases/www.$BASE.local"
     sudo ln -s $d/$ALIAS  aliases/www.$BASE.local
-    #sudo ln -s $d/$ALIAS  $DIR/aliases/www.$BASE.local
   fi
 done
 
@@ -125,6 +122,11 @@ sudo apt-get install -y drush
 
 echo "Restarting Apache one last time..."
 sudo service apache2 restart
+
+echo "Installing dos2unix"
+sudo apt-get install -y dos2unix
+dos2unix /vagrant/backup.sh
+ln -s /vagrant/backup.sh /home/vagrant/backup
 
 # Uncomment for a nice solarized prompt (doesn't seem to work on windows)
 # sudo echo "export PS1='\[\033[38;5;198m\]\u\[$(tput sgr0)\]\[\033[38;5;6m\]@\[$(tput sgr0)\]\[\033[38;5;172m\]\h\[$(tput sgr0)\]\[\033[38;5;1m\]:\[$(tput sgr0)\]\[\033[38;5;6m\]\w\[$(tput sgr0)\]\[\033[38;5;15m\] \n\[$(tput sgr0)\]\[\033[38;5;172m\]\\$ \[$(tput sgr0)\]'" >> /home/vagrant/.profile
