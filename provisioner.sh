@@ -1,10 +1,9 @@
 #! /bin/bash
 
-
 # Remove any existing aliases
 if [ -d /var/www/aliases ]; then
   echo "Removing any existing aliases"
-  sudo find /var/www/aliases -maxdepth 1 -type l -exec rm -f {} \;  
+  sudo find /var/www/aliases -maxdepth 1 -type l -exec rm -f {} \;
 else
   echo "Creating new alias folder"
   sudo mkdir /var/www/aliases
@@ -14,29 +13,33 @@ cd /var/www/
 
 for d in /var/www/* ; do
   BASE=$(basename $d);
-  if [ $BASE == 'aliases' ]; then  
+  if [ $BASE == 'aliases' ]; then
     continue;
   fi
   DIR=$(dirname $d);
-  ALIAS='';
 
-  if [ -f $d/.scotchroot ]; then
-    sudo sed 's/^M$//' $d/.scotchroot >$d/.scotchroot.tmp && mv $d/.scotchroot.tmp $d/.scotchroot
-    sudo tr -d '\r' < $d/.scotchroot > $d/.scotchroot.tmp && mv $d/.scotchroot.tmp $d/.scotchroot
-    ALIAS=$(<$d/.scotchroot);
-  fi
+  # @TODO find a nicer way to link to ruby from here
+  ALIAS=$(/home/vagrant/.rbenv/shims/ruby /vagrant/config.rb $BASE.local);
 
   if [ ! -e $DIR/aliases/$BASE.local ]; then
     echo "Creating new alias for $d/$ALIAS aliases/$BASE.local"
     sudo ln -s $d/$ALIAS aliases/$BASE.local
-    #sudo ln -s $d/$ALIAS $DIR/aliases/$BASE.local
   fi
 
-  if [ ! -e $DIR/aliases/www.$BASE.local ]; then 
+  if [ ! -e $DIR/aliases/www.$BASE.local ]; then
     echo "Creating new alias for  $d/$ALIAS  aliases/www.$BASE.local"
     sudo ln -s $d/$ALIAS  aliases/www.$BASE.local
-    #sudo ln -s $d/$ALIAS  $DIR/aliases/www.$BASE.local
   fi
+done
+
+# Load in dumps
+for f in /vagrant/dumps/*.sql ; do
+  FILENAME=$(basename $f);
+  DB=$(basename $f .sql)
+  sudo echo "MYSQL: Importing $DB";
+  mysql -uroot -proot -e "DROP DATABASE IF EXISTS $DB";
+  mysql -uroot -proot -e "CREATE DATABASE $DB";
+  mysql -uroot -proot $DB < /vagrant/dumps/$FILENAME;
 done
 
 # create and enable rewrite loader
@@ -53,9 +56,9 @@ sudo echo "LoadModule vhost_alias_module /usr/lib/apache2/modules/mod_vhost_alia
 # create our vhost_alias.conf file
 echo "Creating Apache vhost_alias.conf"
 sudo echo "UseCanonicalName Off" > /etc/apache2/mods-available/vhost_alias.conf
-sudo echo "VirtualDocumentRoot /var/www/%0" >> /etc/apache2/mods-available/vhost_alias.conf
+sudo echo "VirtualDocumentRoot /var/www/aliases/%0" >> /etc/apache2/mods-available/vhost_alias.conf
 
-sudo echo "<Directory '/var/www'>" >> /etc/apache2/mods-available/vhost_alias.conf
+sudo echo "<Directory '/var/www/aliases'>" >> /etc/apache2/mods-available/vhost_alias.conf
 sudo echo "Options Indexes FollowSymLinks MultiViews" >> /etc/apache2/mods-available/vhost_alias.conf
 sudo echo "AllowOverride all" >> /etc/apache2/mods-available/vhost_alias.conf
 sudo echo "Order allow,deny" >> /etc/apache2/mods-available/vhost_alias.conf
@@ -91,4 +94,39 @@ do
  sed -i "s/^\($key\).*/\1 $(eval echo = \${$key})/" /etc/php5/apache2/php.ini
 done
 
-service apache2 restart
+echo "Updating repositories"
+sudo apt-get update
+
+echo "Installing XDebug"
+sudo apt-get install -y php5-xdebug php5-xmlrpc
+
+# XDEBUG
+echo "; xdebug
+xdebug.remote_connect_back = 1
+xdebug.remote_enable = 1
+xdebug.remote_handler = \"dbgp\"
+xdebug.remote_port = 9000
+xdebug.var_display_max_children = 512
+xdebug.var_display_max_data = 1024
+xdebug.var_display_max_depth = 10
+xdebug.idekey = \"PHPSTORM\"" >> /etc/php5/apache2/php.ini
+
+echo "Setting locale correctly"
+sudo locale-gen en_GB.UTF-8
+
+echo "Adding composer vendor folders to path"
+sudo echo "PATH='$PATH:~/.composer/vendor/bin'" >> /home/vagrant/.profile
+
+echo "Installing Drush"
+sudo apt-get install -y drush
+
+echo "Restarting Apache one last time..."
+sudo service apache2 restart
+
+echo "Installing dos2unix"
+sudo apt-get install -y dos2unix
+dos2unix /vagrant/backup.sh
+ln -s /vagrant/backup.sh /home/vagrant/backup
+
+# Uncomment for a nice solarized prompt (doesn't seem to work on windows)
+# sudo echo "export PS1='\[\033[38;5;198m\]\u\[$(tput sgr0)\]\[\033[38;5;6m\]@\[$(tput sgr0)\]\[\033[38;5;172m\]\h\[$(tput sgr0)\]\[\033[38;5;1m\]:\[$(tput sgr0)\]\[\033[38;5;6m\]\w\[$(tput sgr0)\]\[\033[38;5;15m\] \n\[$(tput sgr0)\]\[\033[38;5;172m\]\\$ \[$(tput sgr0)\]'" >> /home/vagrant/.profile
