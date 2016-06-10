@@ -1,0 +1,10 @@
+install virtualbox (5.x)
+install vagrant (1.8.x)
+
+Take a full dump of the existing MySQL database (using MySQL Workbench) and put the resulting file in c/dev/www/dump.sql
+Enter your e-mail settings in config.sh
+
+run bash as administrator
+	$ cd /c/dev/env/
+	$ vagrant box update
+	$ vagrant up

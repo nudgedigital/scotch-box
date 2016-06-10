@@ -1,5 +1,20 @@
 #! /bin/bash
 
+source /vagrant/config.sh
+
+echo "
+ _____ _____ ____  _____ _____    ____  _____ _____ _____ _____ _____ __    
+|   | |  |  |    \|   __|   __|  |    \|     |   __|     |_   _|  _  |  |   
+| | | |  |  |  |  |  |  |   __|  |  |  |-   -|  |  |-   -| | | |     |  |__ 
+|_|___|_____|____/|_____|_____|  |____/|_____|_____|_____| |_| |__|__|_____|
+===========================================================================
+                         DEV MACHINE PROVISIONER
+===========================================================================
+
+
+";
+
+
 # Remove any existing aliases
 if [ -d /var/www/aliases ]; then
   echo "Removing any existing aliases"
@@ -9,38 +24,13 @@ else
   sudo mkdir /var/www/aliases
 fi
 
-cd /var/www/
+if [ -d /var/www/phpmyadmin ]; then
+  echo "Removing your local PHPMyAdmin"
+  sudo rm -rf /var/www/phpmyadmin
+  sudo rm /var/www/aliases/www.phpmyadmin.local
+  sudo rm /var/www/aliases/phpmyadmin.local
+fi
 
-for d in /var/www/* ; do
-  BASE=$(basename $d);
-  if [ $BASE == 'aliases' ]; then
-    continue;
-  fi
-  DIR=$(dirname $d);
-
-  # @TODO find a nicer way to link to ruby from here
-  ALIAS=$(/home/vagrant/.rbenv/shims/ruby /vagrant/config.rb $BASE.local);
-
-  if [ ! -e $DIR/aliases/$BASE.local ]; then
-    echo "Creating new alias for $d/$ALIAS aliases/$BASE.local"
-    sudo ln -s $d/$ALIAS aliases/$BASE.local
-  fi
-
-  if [ ! -e $DIR/aliases/www.$BASE.local ]; then
-    echo "Creating new alias for  $d/$ALIAS  aliases/www.$BASE.local"
-    sudo ln -s $d/$ALIAS  aliases/www.$BASE.local
-  fi
-done
-
-# Load in dumps
-for f in /vagrant/dumps/*.sql ; do
-  FILENAME=$(basename $f);
-  DB=$(basename $f .sql)
-  sudo echo "MYSQL: Importing $DB";
-  mysql -uroot -proot -e "DROP DATABASE IF EXISTS $DB";
-  mysql -uroot -proot -e "CREATE DATABASE $DB";
-  mysql -uroot -proot $DB < /vagrant/dumps/$FILENAME;
-done
 
 # create and enable rewrite loader
 echo "Creating Apache rewrite.load"
@@ -74,33 +64,16 @@ sudo a2enmod ssl
 # set default ssl vhost
 sudo a2ensite default-ssl
 
-# Install phpmyadmin silently
-#echo "phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2" | debconf-set-selections
-#echo "phpmyadmin phpmyadmin/dbconfig-install boolean true" | debconf-set-selections
-#echo "phpmyadmin phpmyadmin/mysql/admin-user string root" | debconf-set-selections
-#echo "phpmyadmin phpmyadmin/mysql/admin-pass password root" | debconf-set-selections
-#echo "phpmyadmin phpmyadmin/mysql/app-pass password" |debconf-set-selections
-#echo "phpmyadmin phpmyadmin/app-password-confirm password" | debconf-set-selections
-#apt-get -q -y install phpmyadmin
-
-# Set some very lax php.ini settings for local development
-upload_max_filesize=100M
-post_max_size=100M
-max_execution_time=600
-max_input_time=600
-memory_limit=512M
-for key in upload_max_filesize post_max_size max_execution_time max_input_time memory_limit
-do
- sed -i "s/^\($key\).*/\1 $(eval echo = \${$key})/" /etc/php5/apache2/php.ini
-done
-
 echo "Updating repositories"
-sudo apt-get update
+sudo apt-get update > /dev/null 2>&1
+
+echo "Installing dos2unix"
+sudo apt-get install -y dos2unix > /dev/null 2>&1
 
 echo "Installing XDebug"
-sudo apt-get install -y php5-xdebug php5-xmlrpc
+sudo apt-get install -y php5-xdebug php5-xmlrpc > /dev/null 2>&1
 
-# XDEBUG
+# XDEBUG configuration
 echo "; xdebug
 xdebug.remote_connect_back = 1
 xdebug.remote_enable = 1
@@ -118,15 +91,90 @@ echo "Adding composer vendor folders to path"
 sudo echo "PATH='$PATH:~/.composer/vendor/bin'" >> /home/vagrant/.profile
 
 echo "Installing Drush"
-sudo apt-get install -y drush
+sudo apt-get install -y drush > /dev/null 2>&1
+
+echo "Installing phpmyadmin"
+echo "phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2" | debconf-set-selections
+echo "phpmyadmin phpmyadmin/dbconfig-install boolean true" | debconf-set-selections
+echo "phpmyadmin phpmyadmin/mysql/admin-user string root" | debconf-set-selections
+echo "phpmyadmin phpmyadmin/mysql/admin-pass password root" | debconf-set-selections
+sudo apt-get -y install phpmyadmin > /dev/null 2>&1
+
+# phpmyadmin configuration
+sudo touch /usr/share/phpmyadmin/config.inc.php
+sudo chmod 644 /usr/share/phpmyadmin/config.inc.php
+
+sudo echo "
+<?php
+
+\$cfg['blowfish_secret'] = 'a8b7c6d'; /* YOU MUST FILL IN THIS FOR COOKIE AUTH! */
+
+\$cfg['Servers'][1]['auth_type'] = 'config';
+\$cfg['Servers'][1]['user'] = 'root';
+\$cfg['Servers'][1]['password'] = 'root'; " >> /usr/share/phpmyadmin/config.inc.php
+
+echo "Configuring outbound e-mails"
+sudo apt-get -y install postfix mailutils libsasl2-2 ca-certificates libsasl2-modules  > /dev/null 2>&1
+
+
+echo "
+relayhost = [smtp.gmail.com]:587
+smtp_sasl_auth_enable = yes
+smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+smtp_sasl_security_options = noanonymous
+smtp_tls_CAfile = /etc/postfix/cacert.pem
+smtp_use_tls = yes" >> /etc/postfix/main.cf
+
+echo "[smtp.gmail.com]:587 $email_address:$email_password" >>  /etc/postfix/sasl_passwd
+
+sudo chmod 400 /etc/postfix/sasl_passwd
+sudo postmap /etc/postfix/sasl_passwd
+cat /etc/ssl/certs/Thawte_Premium_Server_CA.pem | sudo tee -a /etc/postfix/cacert.pem
+
+sudo apt-get -y install phpmyadmin > /dev/null 2>&1
+sudo ln -s /usr/share/phpmyadmin/ /var/www/aliases/phpmyadmin.local
+sudo ln -s /usr/share/phpmyadmin/ /var/www/aliases/www.phpmyadmin.local
+sudo /etc/init.d/postfix reload
+
+
+echo "this is the body" | mail -s "this is the subject" $address
+
+
+
+# Set some very lax php.ini settings for local development
+upload_max_filesize=100M
+post_max_size=100M
+max_execution_time=600
+max_input_time=600
+memory_limit=1024M
+display_errors=On
+for key in upload_max_filesize post_max_size max_execution_time max_input_time memory_limit display_errors
+do
+ sed -i "s/^\($key\).*/\1 $(eval echo = \${$key})/" /etc/php5/apache2/php.ini
+done
 
 echo "Restarting Apache one last time..."
 sudo service apache2 restart
 
-echo "Installing dos2unix"
-sudo apt-get install -y dos2unix
-dos2unix /vagrant/backup.sh
-ln -s /vagrant/backup.sh /home/vagrant/backup
+# Build tools
+sudo npm install --global gulp-cli > /dev/null 2>&1
 
-# Uncomment for a nice solarized prompt (doesn't seem to work on windows)
-# sudo echo "export PS1='\[\033[38;5;198m\]\u\[$(tput sgr0)\]\[\033[38;5;6m\]@\[$(tput sgr0)\]\[\033[38;5;172m\]\h\[$(tput sgr0)\]\[\033[38;5;1m\]:\[$(tput sgr0)\]\[\033[38;5;6m\]\w\[$(tput sgr0)\]\[\033[38;5;15m\] \n\[$(tput sgr0)\]\[\033[38;5;172m\]\\$ \[$(tput sgr0)\]'" >> /home/vagrant/.profile
+# Run the on boot functions
+dos2unix /vagrant/onboot.sh
+
+# Find all folders with a  gulp file
+echo "Looking for NPM dependencies to install.. this may take a while!"
+for f in $(find /var/www/ -name 'gulpfile.js'); do
+  DIR=$(dirname $f);
+  BASE=$(basename $f);
+  cd $DIR
+  sudo npm link gulp > /dev/null 2>&1
+  sudo npm install > /dev/null 2>&1
+  echo "..Node packages installed for $BASE"
+done
+
+# Import any databases
+for d in /var/www/*.sql ; do
+  echo "Importing existing database $d"
+  mysql -u root -proot < $d;
+done
