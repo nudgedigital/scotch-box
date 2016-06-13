@@ -1,19 +1,18 @@
 #! /bin/bash
 
-source /vagrant/config.sh
+clear
+source /vagrant/config
 
 echo "
  _____ _____ ____  _____ _____    ____  _____ _____ _____ _____ _____ __    
 |   | |  |  |    \|   __|   __|  |    \|     |   __|     |_   _|  _  |  |   
 | | | |  |  |  |  |  |  |   __|  |  |  |-   -|  |  |-   -| | | |     |  |__ 
 |_|___|_____|____/|_____|_____|  |____/|_____|_____|_____| |_| |__|__|_____|
-===========================================================================
+============================================================================
                          DEV MACHINE PROVISIONER
-===========================================================================
-
+============================================================================
 
 ";
-
 
 # Remove any existing aliases
 if [ -d /var/www/aliases ]; then
@@ -31,13 +30,10 @@ if [ -d /var/www/phpmyadmin ]; then
   sudo rm /var/www/aliases/phpmyadmin.local
 fi
 
-
 # create and enable rewrite loader
 echo "Creating Apache rewrite.load"
 sudo echo "LoadModule rewrite_module /usr/lib/apache2/modules/mod_rewrite.so" > /etc/apache2/mods-available/rewrite.load
-
-# enable Apache mod_rewrite
-sudo a2enmod rewrite
+sudo a2enmod rewrite  > /dev/null 2>&1
 
 # create and enable vhost_alias loader
 echo "Creating Apache vhost_alias.load"
@@ -56,13 +52,13 @@ sudo echo "allow from all" >> /etc/apache2/mods-available/vhost_alias.conf
 sudo echo "</Directory>" >> /etc/apache2/mods-available/vhost_alias.conf
 
 # enable Apache mod_rewrite
-sudo a2enmod vhost_alias
+sudo a2enmod vhost_alias > /dev/null 2>&1
 
 # enable Apache SSL mod
-sudo a2enmod ssl
+sudo a2enmod ssl > /dev/null 2>&1
 
 # set default ssl vhost
-sudo a2ensite default-ssl
+sudo a2ensite default-ssl > /dev/null 2>&1
 
 echo "Updating repositories"
 sudo apt-get update > /dev/null 2>&1
@@ -85,7 +81,7 @@ xdebug.var_display_max_depth = 10
 xdebug.idekey = \"PHPSTORM\"" >> /etc/php5/apache2/php.ini
 
 echo "Setting locale correctly"
-sudo locale-gen en_GB.UTF-8
+sudo locale-gen en_GB.UTF-8 > /dev/null 2>&1
 
 echo "Adding composer vendor folders to path"
 sudo echo "PATH='$PATH:~/.composer/vendor/bin'" >> /home/vagrant/.profile
@@ -98,48 +94,44 @@ echo "phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2" | debconf
 echo "phpmyadmin phpmyadmin/dbconfig-install boolean true" | debconf-set-selections
 echo "phpmyadmin phpmyadmin/mysql/admin-user string root" | debconf-set-selections
 echo "phpmyadmin phpmyadmin/mysql/admin-pass password root" | debconf-set-selections
-sudo apt-get -y install phpmyadmin > /dev/null 2>&1
+sudo apt-get install -y phpmyadmin > /dev/null 2>&1
 
 # phpmyadmin configuration
-sudo touch /usr/share/phpmyadmin/config.inc.php
-sudo chmod 644 /usr/share/phpmyadmin/config.inc.php
-
+sudo touch /etc/phpmyadmin/conf.d/overrides.php
 sudo echo "
 <?php
 
-\$cfg['blowfish_secret'] = 'a8b7c6d'; /* YOU MUST FILL IN THIS FOR COOKIE AUTH! */
-
 \$cfg['Servers'][1]['auth_type'] = 'config';
 \$cfg['Servers'][1]['user'] = 'root';
-\$cfg['Servers'][1]['password'] = 'root'; " >> /usr/share/phpmyadmin/config.inc.php
+\$cfg['Servers'][1]['password'] = 'root';
 
-echo "Configuring outbound e-mails"
-sudo apt-get -y install postfix mailutils libsasl2-2 ca-certificates libsasl2-modules  > /dev/null 2>&1
-
-
-echo "
-relayhost = [smtp.gmail.com]:587
-smtp_sasl_auth_enable = yes
-smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
-smtp_sasl_security_options = noanonymous
-smtp_tls_CAfile = /etc/postfix/cacert.pem
-smtp_use_tls = yes" >> /etc/postfix/main.cf
-
-echo "[smtp.gmail.com]:587 $email_address:$email_password" >>  /etc/postfix/sasl_passwd
-
-sudo chmod 400 /etc/postfix/sasl_passwd
-sudo postmap /etc/postfix/sasl_passwd
-cat /etc/ssl/certs/Thawte_Premium_Server_CA.pem | sudo tee -a /etc/postfix/cacert.pem
+" >> /etc/phpmyadmin/conf.d/overrides.php
+sudo chmod 755 /etc/phpmyadmin/conf.d/overrides.php
 
 sudo apt-get -y install phpmyadmin > /dev/null 2>&1
 sudo ln -s /usr/share/phpmyadmin/ /var/www/aliases/phpmyadmin.local
 sudo ln -s /usr/share/phpmyadmin/ /var/www/aliases/www.phpmyadmin.local
-sudo /etc/init.d/postfix reload
+
+echo PURGE | debconf-communicate phpmyadmin
 
 
-echo "this is the body" | mail -s "this is the subject" $address
+echo "Configuring outbound e-mails"
 
+echo "postfix postfix/mailname string dev.local" | debconf-set-selections
+echo "postfix postfix/main_mailer_type string 'Dev box'" | debconf-set-selections
 
+sudo apt-get -y install mailutils > /dev/null 2>&1
+sudo apt-get -y install ssmtp > /dev/null 2>&1
+
+sudo echo "
+FromLineOverride=YES
+AuthUser=$email_address
+AuthPass=$email_password
+mailhub=smtp.gmail.com:587
+UseSTARTTLS=YES" >> /etc/ssmtp/ssmtp.conf
+
+#echo "Hello from your dev box!" | mail -s "this is the subject" "$email_address"
+#echo "..Test email sent!"
 
 # Set some very lax php.ini settings for local development
 upload_max_filesize=100M
@@ -160,9 +152,20 @@ sudo service apache2 restart
 sudo npm install --global gulp-cli > /dev/null 2>&1
 
 # Run the on boot functions
-dos2unix /vagrant/onboot.sh
+echo "Creating new symbolic links"
+bash /vagrant/onboot.sh > /dev/null 2>&1
 
-# Find all folders with a  gulp file
+# At the on boot functions
+echo "Adding onboot script"
+sudo echo 'bash /vagrant/onboot.sh' >> /etc/rc.local
+
+# Import any databases
+for d in /var/www/*.sql ; do
+  echo "Importing existing database $d"
+  mysql -u root -proot < $d;
+done
+
+# Find all folders with a gulp file
 echo "Looking for NPM dependencies to install.. this may take a while!"
 for f in $(find /var/www/ -name 'gulpfile.js'); do
   DIR=$(dirname $f);
@@ -173,8 +176,3 @@ for f in $(find /var/www/ -name 'gulpfile.js'); do
   echo "..Node packages installed for $BASE"
 done
 
-# Import any databases
-for d in /var/www/*.sql ; do
-  echo "Importing existing database $d"
-  mysql -u root -proot < $d;
-done

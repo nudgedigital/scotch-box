@@ -1,9 +1,12 @@
+Nudge Digital Dev Box Provisioning
+
 install virtualbox (5.x)
 install vagrant (1.8.x)
 
 Take a full dump of the existing MySQL database (using MySQL Workbench) and put the resulting file in c/dev/www/dump.sql
-Enter your e-mail settings in config.sh
+Enter your e-mail settings in config file
 
+Clone this repo into /c/dev/env/
 run bash as administrator
 	$ cd /c/dev/env/
 	$ vagrant box update

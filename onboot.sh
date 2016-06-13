@@ -1,16 +1,17 @@
 #! /bin/bash
 
+
+
 # Create symbolic links to all sites
 cd /var/www/
 for d in /var/www/* ; do
   BASE=$(basename $d);
-  if [ $BASE == 'aliases' ]; then
+  if [ $BASE == "aliases" ]; then
     continue;
   fi
   DIR=$(dirname $d);
-  ALIAS=$BASE;
   if [ ! -e $DIR/aliases/$BASE.local ]; then
-    echo "Creating HTTP webroot for $ALIAS"
+    echo "Creating HTTP webroot for $BASE"
     if [ -d $d/public_html ]; then
       sudo ln -s $d/public_html aliases/$BASE.local
     else
@@ -18,7 +19,7 @@ for d in /var/www/* ; do
     fi
   fi
   if [ ! -e $DIR/aliases/www.$BASE.local ]; then
-    echo "Creating HTTPS webroot for $ALIAS"
+    echo "Creating HTTPS webroot for $BASE"
     if [ -d $d/public_html ]; then
       sudo ln -s $d/public_html  aliases/www.$BASE.local
     else
