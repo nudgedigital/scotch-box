@@ -11,3 +11,10 @@ run bash as administrator
 	$ cd /c/dev/env/
 	$ vagrant box update
 	$ vagrant up
+
+
+For each folder in your /c/dev/www folder, add a new entry to your hosts file with the .local domain suffix.
+
+e.g. for the '/c/dev/www/nudge'  you would add
+
+192.168.33.10 nudge.local

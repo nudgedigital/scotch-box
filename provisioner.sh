@@ -1,6 +1,5 @@
 #! /bin/bash
 
-clear
 source /vagrant/config
 
 echo "
@@ -114,7 +113,6 @@ sudo ln -s /usr/share/phpmyadmin/ /var/www/aliases/www.phpmyadmin.local
 
 echo PURGE | debconf-communicate phpmyadmin
 
-
 echo "Configuring outbound e-mails"
 
 echo "postfix postfix/mailname string dev.local" | debconf-set-selections
@@ -145,8 +143,8 @@ do
  sed -i "s/^\($key\).*/\1 $(eval echo = \${$key})/" /etc/php5/apache2/php.ini
 done
 
-echo "Restarting Apache one last time..."
-sudo service apache2 restart
+echo "Restarting Apache"
+sudo service apache2 restart > /dev/null 2>&1
 
 # Build tools
 sudo npm install --global gulp-cli > /dev/null 2>&1
@@ -173,6 +171,6 @@ for f in $(find /var/www/ -name 'gulpfile.js'); do
   cd $DIR
   sudo npm link gulp > /dev/null 2>&1
   sudo npm install > /dev/null 2>&1
-  echo "..Node packages installed for $BASE"
 done
 
+echo "Provisioning complete!"
