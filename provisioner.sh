@@ -131,6 +131,9 @@ UseSTARTTLS=YES" >> /etc/ssmtp/ssmtp.conf
 #echo "Hello from your dev box!" | mail -s "this is the subject" "$email_address"
 #echo "..Test email sent!"
 
+
+echo "Configuring PHP"
+
 # Set some very lax php.ini settings for local development
 upload_max_filesize=100M
 post_max_size=100M
@@ -143,6 +146,10 @@ do
  sed -i "s/^\($key\).*/\1 $(eval echo = \${$key})/" /etc/php5/apache2/php.ini
 done
 
+echo "Configuring MySQL"
+sudo sed '/\[mysqld\]/a \
+skip_name_resolve\' -i /etc/mysql/my.cnf
+
 echo "Restarting Apache"
 sudo service apache2 restart > /dev/null 2>&1
 
@@ -151,6 +158,7 @@ sudo npm install --global gulp-cli > /dev/null 2>&1
 
 # Run the on boot functions
 echo "Creating new symbolic links"
+sudo dos2unix /vagrant/onboot.sh > /dev/null 2>&1
 bash /vagrant/onboot.sh > /dev/null 2>&1
 
 # At the on boot functions
@@ -164,13 +172,14 @@ for d in /var/www/*.sql ; do
 done
 
 # Find all folders with a gulp file
-echo "Looking for NPM dependencies to install.. this may take a while!"
-for f in $(find /var/www/ -name 'gulpfile.js'); do
-  DIR=$(dirname $f);
-  BASE=$(basename $f);
-  cd $DIR
-  sudo npm link gulp > /dev/null 2>&1
-  sudo npm install > /dev/null 2>&1
-done
+#echo "Looking for NPM dependencies to install.. this may take a while!"
+#for f in $(find /var/www/ -name 'gulpfile.js'); do
+#  DIR=$(dirname $f);
+#  BASE=$(basename $f);
+#  cd $DIR
+#  sudo npm link gulp > /dev/null 2>&1
+#  sudo npm install > /dev/null 2>&1
+#done
+
 
 echo "Provisioning complete!"
