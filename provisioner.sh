@@ -59,6 +59,11 @@ sudo a2enmod ssl > /dev/null 2>&1
 # set default ssl vhost
 sudo a2ensite default-ssl > /dev/null 2>&1
 
+# Configure git user-name
+echo "Configuring global git user"
+git config --global user.name "$git_name"  > /dev/null 2>&1
+git config --global user.email "$email_address"  > /dev/null 2>&1
+
 echo "Updating repositories"
 sudo apt-get update > /dev/null 2>&1
 
@@ -78,6 +83,10 @@ xdebug.var_display_max_children = 512
 xdebug.var_display_max_data = 1024
 xdebug.var_display_max_depth = 10
 xdebug.idekey = \"PHPSTORM\"" >> /etc/php5/apache2/php.ini
+
+echo "Installing Symfony installer"
+sudo curl -LsS https://symfony.com/installer -o /usr/local/bin/symfony > /dev/null 2>&1
+sudo chmod a+x /usr/local/bin/symfony > /dev/null 2>&1
 
 echo "Setting locale correctly"
 sudo locale-gen en_GB.UTF-8 > /dev/null 2>&1
@@ -131,7 +140,6 @@ UseSTARTTLS=YES" >> /etc/ssmtp/ssmtp.conf
 #echo "Hello from your dev box!" | mail -s "this is the subject" "$email_address"
 #echo "..Test email sent!"
 
-
 echo "Configuring PHP"
 
 # Set some very lax php.ini settings for local development
@@ -148,7 +156,8 @@ done
 
 echo "Configuring MySQL"
 sudo sed '/\[mysqld\]/a \
-skip_name_resolve\' -i /etc/mysql/my.cnf
+skip_name_resolve\' -i /etc/mysql/my.cnf > /dev/null 2>&1
+sudo service mysql restart > /dev/null 2>&1
 
 echo "Restarting Apache"
 sudo service apache2 restart > /dev/null 2>&1
@@ -180,6 +189,5 @@ done
 #  sudo npm link gulp > /dev/null 2>&1
 #  sudo npm install > /dev/null 2>&1
 #done
-
 
 echo "Provisioning complete!"
